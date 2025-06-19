@@ -189,4 +189,8 @@ This project is open source and available under the MIT License.
 
 ## Support
 
-If you encounter any issues or have questions, please open an issue on the repository.
+# If you encounter any issues or have questions, please open an issue on the repository.
+
+# YTNotesGenerator
+
+105070ecde17a9975403d408914895c42256a33d
