@@ -1,127 +1,172 @@
-from fastapi import FastAPI, HTTPException
+#!/usr/bin/env python3
+"""
+YouTube Notes Generator Backend - FastAPI Application
+"""
+
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from utils import extract_transcript, generate_notes, generate_pdf  # ⬅️ import PDF function
-import tempfile
+import asyncio
 import os
+from datetime import datetime
+from typing import Optional
 
-app = FastAPI(title="YouTube Notes Generator API", version="1.0.0")
+# Import our services and models
+from models import (
+    VideoRequest, PDFRequest, NotesResponse, HealthResponse, 
+    APIInfoResponse, ErrorResponse, NoteStyle
+)
+from youtube_service import YouTubeService
+from ai_service import AIService
+from pdf_service import PDFService
+from config import Config
 
-# CORS setup
+# Create FastAPI app
+app = FastAPI(
+    title="YouTube Notes Generator API",
+    description="Generate comprehensive study notes from YouTube videos using AI",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, use your frontend's origin
+    allow_origins=["*"],  # In production, specify your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Request body model
-class VideoRequest(BaseModel):
-    url: str
+@app.get("/", response_model=APIInfoResponse)
+async def root():
+    """Root endpoint with API information"""
+    return APIInfoResponse(
+        message="YouTube Notes Generator API",
+        version="1.0.0",
+        endpoints={
+            "generate_notes": "/generate-notes",
+            "generate_pdf": "/generate-pdf",
+            "download_pdf": "/download-pdf",
+            "health": "/health",
+            "docs": "/docs"
+        },
+        features=[
+            "YouTube video transcript extraction",
+            "AI-powered note generation",
+            "Multiple note styles (comprehensive, summary, detailed, bullet points)",
+            "PDF generation with formatting",
+            "Video metadata extraction"
+        ]
+    )
 
-# PDF Request model
-class PDFRequest(BaseModel):
-    notes: str
-    title: str
-    youtube_url: str
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint"""
+    return HealthResponse(
+        status="healthy",
+        message="YouTube Notes Generator API is running",
+        version="1.0.0",
+        timestamp=datetime.now().isoformat()
+    )
 
-# Response model
-class NotesResponse(BaseModel):
-    success: bool
-    notes: str
-    video_title: str | None = None
-    video_author: str | None = None
-    video_duration: str | None = None
-    publish_date: str | None = None
-    error: str | None = None
-
-# ✅ Real route implementation
-@app.post("/generate-notes/", response_model=NotesResponse)
-async def create_notes(request: VideoRequest):
+@app.post("/generate-notes", response_model=NotesResponse)
+async def generate_notes(request: VideoRequest):
+    """Generate notes from a YouTube video"""
     try:
-        # Validate URL
-        if not request.url or not request.url.strip():
-            raise HTTPException(status_code=400, detail="URL is required")
+        # Validate YouTube URL
+        if not YouTubeService.validate_youtube_url(request.url):
+            raise HTTPException(status_code=400, detail="Invalid YouTube URL")
         
-        # Step 1: Get transcript and metadata from YouTube video
-        try:
-            video_data = extract_transcript(request.url)
-        except ValueError as e:
-            # Invalid URL format
-            raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            # Other transcript extraction errors
-            error_msg = str(e)
-            if "No transcript available" in error_msg:
-                raise HTTPException(status_code=404, detail="No transcript available for this video. Please try a different video with subtitles enabled.")
-            elif "Transcripts are disabled" in error_msg:
-                raise HTTPException(status_code=403, detail="Transcripts are disabled for this video. The video owner has disabled subtitle generation.")
-            elif "Video is unavailable" in error_msg:
-                raise HTTPException(status_code=404, detail="Video is unavailable. It may be private, deleted, or restricted.")
-            elif "Failed to fetch transcript" in error_msg:
-                raise HTTPException(status_code=500, detail="Failed to fetch transcript. This might be due to language restrictions or video settings.")
-            else:
-                raise HTTPException(status_code=500, detail=f"Transcript extraction failed: {error_msg}")
-
-        # Step 2: Generate notes using OpenRouter
-        try:
-            notes = await generate_notes(video_data["transcript"])
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Note generation failed: {str(e)}")
-
-        # Step 3: Return result with metadata
+        # Extract transcript and metadata
+        video_data = YouTubeService.extract_transcript_and_metadata(request.url)
+        
+        # Get transcript language for AI processing
+        transcript_language = str(video_data.get("transcript_language", "unknown"))
+        
+        # Generate notes using AI with language information
+        notes = await AIService.generate_notes(
+            str(video_data["transcript"]), 
+            request.style.value,
+            transcript_language
+        )
+        
         return NotesResponse(
             success=True,
             notes=notes,
-            video_title=video_data.get("video_title"),
-            video_author=video_data.get("video_author"),
-            video_duration=video_data.get("video_duration"),
-            publish_date=video_data.get("publish_date")
+            video_title=str(video_data.get("video_title")) if video_data.get("video_title") else None,
+            video_author=str(video_data.get("video_author")) if video_data.get("video_author") else None,
+            video_duration=str(video_data.get("video_duration")) if video_data.get("video_duration") else None,
+            publish_date=str(video_data.get("publish_date")) if video_data.get("publish_date") else None,
+            view_count=str(video_data.get("view_count")) if video_data.get("view_count") else None,
+            description=str(video_data.get("description")) if video_data.get("description") else None,
+            video_id=str(video_data.get("video_id")) if video_data.get("video_id") else None,
+            transcript_language=str(video_data.get("transcript_language")) if video_data.get("transcript_language") else None,
+            transcript_language_code=str(video_data.get("transcript_language_code")) if video_data.get("transcript_language_code") else None
         )
-
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
+        
     except Exception as e:
-        # Catch any other unexpected errors
         return NotesResponse(
             success=False,
             notes="",
-            error=f"Unexpected error: {str(e)}"
+            error=str(e)
         )
 
-# PDF Download endpoint
-@app.post("/download-pdf/")
-async def download_pdf(request: PDFRequest):
+@app.post("/generate-pdf")
+async def generate_pdf(request: PDFRequest):
+    """Generate PDF from notes"""
     try:
         # Generate PDF
-        pdf_path = generate_pdf(request.notes, request.title, request.youtube_url)
-        
-        # Return the PDF file
-        return FileResponse(
-            path=pdf_path,
-            filename=f"{request.title.replace(' ', '_')}.pdf",
-            media_type="application/pdf"
+        pdf_path = PDFService.generate_pdf(
+            notes=request.notes,
+            title=request.title,
+            youtube_url=request.youtube_url,
+            metadata=request.metadata or {}
         )
+        
+        # Return PDF file
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=f"{request.title.replace(' ', '_')}.pdf"
+        )
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "message": "YouTube Notes Generator API is running"}
+@app.post("/download-pdf")
+async def download_pdf(request: PDFRequest):
+    """Download PDF from notes (alias for generate-pdf)"""
+    try:
+        # Generate PDF
+        pdf_path = PDFService.generate_pdf(
+            notes=request.notes,
+            title=request.title,
+            youtube_url=request.youtube_url,
+            metadata=request.metadata or {}
+        )
+        
+        # Return PDF file
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=f"{request.title.replace(' ', '_')}.pdf"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
-# Root endpoint
-@app.get("/")
-async def root():
+@app.get("/styles")
+async def get_available_styles():
+    """Get available note generation styles"""
     return {
-        "message": "YouTube Notes Generator API",
-        "version": "1.0.0",
-        "endpoints": {
-            "generate_notes": "/generate-notes/",
-            "download_pdf": "/download-pdf/",
-            "health": "/health"
-        }
+        "styles": [
+            {"value": style.value, "name": style.name.replace("_", " ").title()}
+            for style in NoteStyle
+        ]
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
