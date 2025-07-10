@@ -17,7 +17,7 @@ class Config:
     
     # API Settings
     OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-    OPENROUTER_MODEL = "mistralai/mistral-small-3.1-24b-instruct:free"
+    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "mistralai/mistral-small-3.2-24b-instruct:free")
     
     # Request limits
     MAX_TRANSCRIPT_LENGTH = 8000  # characters
