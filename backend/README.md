@@ -35,7 +35,7 @@ A powerful FastAPI backend that generates comprehensive study notes from YouTube
 3. **Set up environment variables**:
    Create a `.env` file in the backend directory:
    ```env
-   OPENROUTER_API_KEY=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
+   OPENROUTER_API_KEY=your_openrouter_api_key_here
    ```
 
 ## Usage

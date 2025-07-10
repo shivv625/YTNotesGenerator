@@ -13,7 +13,7 @@ class Config:
     """Application configuration"""
     
     # API Keys
-    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     
     # API Settings
     OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
