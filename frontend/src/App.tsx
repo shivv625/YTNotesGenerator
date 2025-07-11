@@ -79,6 +79,10 @@ function App() {
     return youtubeRegex.test(url);
   };
 
+  const API_BASE = import.meta.env.PROD
+    ? "https://brevixai-backend.onrender.com"
+    : "/api";
+
   const generateNotes = async () => {
     if (!youtubeUrl.trim()) {
       setError("Please enter a YouTube URL");
@@ -95,7 +99,7 @@ function App() {
     setError(null);
 
     try {
-      const response = await fetch("/api/generate-notes/", {
+      const response = await fetch(`${API_BASE}/generate-notes/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -170,7 +174,7 @@ function App() {
 
     try {
       console.log("📄 Generating PDF...");
-      const response = await fetch("/api/download-pdf", {
+      const response = await fetch(`${API_BASE}/download-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
