@@ -543,3 +543,58 @@
 .postbook-font {
   font-family: "Postbook", serif !important;
 }
+
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("./assets/bebas_neue/BebasNeue-Regular.woff2") format("woff2"),
+    url("./assets/bebas_neue/BebasNeue-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.bebas-neue {
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+@font-face {
+  font-family: "Votrag";
+  src: url("./assets/votrag/Votrag.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.votrag {
+  font-family: "Votrag", Arial, sans-serif !important;
+  letter-spacing: 0.05em;
+}
+
+@font-face {
+  font-family: "Coolvetica";
+  src: url("./assets/coolvetica/Coolvetica Rg.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.coolvetica {
+  font-family: "Coolvetica", Arial, sans-serif !important;
+  letter-spacing: 0.03em;
+  background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.flex-center-vertical {
+  display: flex;
+  align-items: center;
+}
