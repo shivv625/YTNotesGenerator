@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backend Connection Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      input {
+        width: 400px;
+        padding: 8px;
+        margin: 10px 0;
+      }
+      button {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Backend Connection Test</h1>
+    <p>Enter your Render backend URL to test the connection:</p>
+    <input
+      type="text"
+      id="backendUrl"
+      placeholder="https://your-app-name.onrender.com"
+      value="https://brevixai-backend.onrender.com"
+    />
+    <br />
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="result"></div>
+
+    <script>
+      async function testConnection() {
+        const url = document.getElementById("backendUrl").value;
+        const resultDiv = document.getElementById("result");
+
+        if (!url) {
+          resultDiv.innerHTML =
+            '<div class="result error">Please enter a URL</div>';
+          return;
+        }
+
+        try {
+          // Test health endpoint
+          const response = await fetch(`${url}/health`);
+          if (response.ok) {
+            const data = await response.json();
+            resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ Backend is working!<br>
+                            Status: ${data.status}<br>
+                            Message: ${data.message}<br>
+                            Version: ${data.version}
+                        </div>
+                    `;
+          } else {
+            resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ Backend responded with status: ${response.status}<br>
+                            This might mean the URL is wrong or the backend is not running.
+                        </div>
+                    `;
+          }
+        } catch (error) {
+          resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ Failed to connect to backend<br>
+                        Error: ${error.message}<br>
+                        <br>
+                        Possible issues:<br>
+                        - Wrong URL<br>
+                        - Backend not deployed<br>
+                        - CORS issues<br>
+                        - Network problems
+                    </div>
+                `;
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -80,7 +80,7 @@ function App() {
   };
 
   const API_BASE = import.meta.env.PROD
-    ? "https://brevixai-backend.onrender.com"
+    ? import.meta.env.VITE_API_URL || "https://brevixai-backend.onrender.com" // Use environment variable or fallback
     : "/api";
 
   const generateNotes = async () => {
