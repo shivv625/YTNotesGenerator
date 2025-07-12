@@ -5,11 +5,14 @@ YouTube service for extracting transcripts and metadata
 
 import re
 from urllib.parse import urlparse, parse_qs
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
-from pytube import YouTube
+import pytube
 from typing import Dict, Optional, List, Any, Union
 import logging
+import os
+import tempfile
+import whisper
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +148,7 @@ class YouTubeService:
     def get_video_metadata(url: str) -> Dict[str, Optional[str]]:
         """Get video metadata using pytube"""
         try:
-            yt = YouTube(url)
+            yt = pytube.YouTube(url)
             
             # Get basic metadata
             video_title = yt.title or "Unknown Title"
@@ -196,29 +199,87 @@ class YouTubeService:
             }
     
     @staticmethod
-    def extract_transcript_and_metadata(url: str) -> Dict[str, Union[str, bool, None]]:
-        """Extract both transcript and metadata from YouTube video with language support"""
+    def extract_transcript_and_metadata(youtube_url: str):
+        """
+        Extract transcript and metadata from a YouTube video.
+        If transcript is not available, fallback to Whisper transcription.
+        """
+        print(f"Starting transcript extraction for: {youtube_url}")
+        
+        # First, try to get video metadata (this should work for most videos)
         try:
-            # Extract video ID
-            video_id = YouTubeService.extract_video_id(url)
-            
-            # Get transcript with language information
-            transcript_info = YouTubeService.get_transcript_with_language_info(video_id)
-            
-            # Get video metadata
-            metadata = YouTubeService.get_video_metadata(url)
-            
-            return {
-                "transcript": transcript_info["transcript"],
-                "transcript_language": transcript_info["language"],
-                "transcript_language_code": transcript_info["language_code"],
-                "transcript_is_generated": transcript_info["is_generated"],
-                "video_id": video_id,
-                **metadata
+            yt = pytube.YouTube(youtube_url)
+            metadata = {
+                "video_title": yt.title or "Unknown Title",
+                "video_author": yt.author or "Unknown Author",
+                "video_duration": str(yt.length) if yt.length else "Unknown",
+                "publish_date": str(yt.publish_date) if yt.publish_date else None,
+                "view_count": str(yt.views) if yt.views else "0",
+                "description": yt.description or "",
+                "video_id": yt.video_id
             }
-            
         except Exception as e:
-            raise Exception(f"Failed to extract video data: {str(e)}")
+            print(f"Failed to get metadata: {e}")
+            metadata = {
+                "video_title": "Unknown Title",
+                "video_author": "Unknown Author", 
+                "video_duration": "Unknown",
+                "publish_date": None,
+                "view_count": "0",
+                "description": "",
+                "video_id": None
+            }
+        
+        # Try to get transcript first
+        transcript = None
+        transcript_language = "unknown"
+        transcript_language_code = "unknown"
+        
+        try:
+            print("Attempting to extract transcript...")
+            video_id = YouTubeService.extract_video_id(youtube_url)
+            transcript_info = YouTubeService.get_transcript_with_language_info(video_id)
+            transcript = transcript_info["transcript"]
+            transcript_language = transcript_info["language"]
+            transcript_language_code = transcript_info["language_code"]
+            print("✅ Transcript extracted successfully!")
+        except Exception as e:
+            print(f"❌ Transcript extraction failed: {e}")
+            print("🔄 Falling back to Whisper transcription...")
+            
+            # Fallback to Whisper
+            try:
+                print("Downloading audio for Whisper transcription...")
+                audio_stream = yt.streams.filter(only_audio=True).first()
+                if audio_stream is None:
+                    raise Exception('No audio stream found for this video.')
+                
+                with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_audio:
+                    audio_stream.download(filename=tmp_audio.name)
+                    audio_path = tmp_audio.name
+                
+                print("Transcribing with Whisper...")
+                model = whisper.load_model("base")
+                result = model.transcribe(audio_path)
+                transcript = result["text"]
+                transcript_language = result.get("language", "unknown")
+                transcript_language_code = result.get("language", "unknown")
+                
+                # Clean up
+                os.remove(audio_path)
+                print("✅ Whisper transcription completed!")
+                
+            except Exception as whisper_error:
+                print(f"❌ Whisper fallback also failed: {whisper_error}")
+                raise Exception(f"Failed to extract video data. Transcript error: {e}, Whisper error: {whisper_error}")
+        
+        # Return the result
+        return {
+            "transcript": transcript,
+            "transcript_language": transcript_language,
+            "transcript_language_code": transcript_language_code,
+            **metadata
+        }
     
     @staticmethod
     def validate_youtube_url(url: str) -> bool:
