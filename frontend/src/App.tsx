@@ -49,7 +49,7 @@ function App() {
   };
 
   const API_BASE = import.meta.env.PROD
-    ? import.meta.env.VITE_API_URL || "https://brevixai-backend.onrender.com" // Use environment variable or fallback
+    ? "/.netlify/functions" // Use Netlify Functions in production
     : "/api";
 
   const generateNotes = async () => {
@@ -75,6 +75,7 @@ function App() {
         },
         body: JSON.stringify({
           url: youtubeUrl,
+          style: "comprehensive",
         }),
       });
 
@@ -84,10 +85,7 @@ function App() {
         if (data.success) {
           setGeneratedNotes({
             content: data.notes,
-            videoTitle: data.video_title || data.title,
-            videoDuration: data.video_duration || data.duration,
-            videoAuthor: data.video_author || data.author,
-            publishDate: data.publish_date || data.date,
+            videoTitle: data.title || "Generated Notes",
           });
 
           setShowResults(true);
@@ -102,32 +100,9 @@ function App() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
     } catch (error) {
-      console.error("API Error:", error);
-
-      // Handle different types of errors with better messages
-      let errorMessage = "Failed to connect to server";
-
-      if (error instanceof Error) {
-        if (error.message.includes("404")) {
-          errorMessage =
-            "No transcript available for this video. Please try a different video with subtitles enabled.";
-        } else if (error.message.includes("403")) {
-          errorMessage =
-            "Transcripts are disabled for this video. The video owner has disabled subtitle generation.";
-        } else if (error.message.includes("500")) {
-          errorMessage = "Server error occurred. Please try again later.";
-        } else if (error.message.includes("Failed to fetch transcript")) {
-          errorMessage =
-            "Failed to fetch transcript. This might be due to language restrictions or video settings.";
-        } else if (error.message.includes("No transcript available")) {
-          errorMessage =
-            "No transcript available for this video. Please try a different video with subtitles enabled.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      setError(errorMessage);
+      setError(
+        error instanceof Error ? error.message : "Failed to connect to server"
+      );
       setIsProcessing(false);
       return;
     }
@@ -142,8 +117,7 @@ function App() {
     if (!generatedNotes) return;
 
     try {
-      console.log("📄 Generating PDF...");
-      const response = await fetch(`${API_BASE}/download-pdf`, {
+      const response = await fetch(`${API_BASE}/generate-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -151,12 +125,10 @@ function App() {
         body: JSON.stringify({
           notes: generatedNotes.content,
           title: generatedNotes.videoTitle || "Generated Notes",
-          youtube_url: youtubeUrl,
         }),
       });
 
       if (response.ok) {
-        // Create blob and download
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -166,17 +138,14 @@ function App() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        console.log("✅ PDF downloaded successfully!");
         return;
       } else {
         const errorText = await response.text();
-        console.error("❌ PDF generation failed:", response.status, errorText);
         throw new Error(
           `PDF generation failed: ${response.status} - ${errorText}`
         );
       }
     } catch (error) {
-      console.error("❌ PDF download error:", error);
       alert(
         `PDF download failed: ${
           error instanceof Error ? error.message : "Unknown error"

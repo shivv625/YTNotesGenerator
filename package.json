@@ -1,5 +1,27 @@
 {
   "dependencies": {
-    "react-markdown": "^8.0.7"
-  }
+    "axios": "^1.10.0",
+    "openai": "^5.9.0",
+    "pdfkit": "^0.17.1",
+    "react-markdown": "^8.0.7",
+    "youtube-transcript": "^1.2.1"
+  },
+  "name": "ytnotesgeneratorfrontend",
+  "version": "1.0.0",
+  "description": "An AI-powered web application that generates comprehensive study notes from YouTube videos. Built with React (Frontend) and FastAPI (Backend).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shivv625/YTNotesGenerator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shivv625/YTNotesGenerator/issues"
+  },
+  "homepage": "https://github.com/shivv625/YTNotesGenerator#readme"
 }
