@@ -13,6 +13,8 @@ import logging
 import os
 import tempfile
 import whisper
+import traceback
+import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +208,7 @@ class YouTubeService:
         """
         print(f"Starting transcript extraction for: {youtube_url}")
         
-        # First, try to get video metadata (this should work for most videos)
+        # First, try to get video metadata (try pytube, fallback to minimal info)
         try:
             yt = pytube.YouTube(youtube_url)
             metadata = {
@@ -220,6 +222,12 @@ class YouTubeService:
             }
         except Exception as e:
             print(f"Failed to get metadata: {e}")
+            traceback.print_exc()
+            # Fallback: try to extract video_id from URL
+            try:
+                video_id = YouTubeService.extract_video_id(youtube_url)
+            except Exception:
+                video_id = None
             metadata = {
                 "video_title": "Unknown Title",
                 "video_author": "Unknown Author", 
@@ -227,7 +235,7 @@ class YouTubeService:
                 "publish_date": None,
                 "view_count": "0",
                 "description": "",
-                "video_id": None
+                "video_id": video_id
             }
         
         # Try to get transcript first
@@ -237,7 +245,7 @@ class YouTubeService:
         
         try:
             print("Attempting to extract transcript...")
-            video_id = YouTubeService.extract_video_id(youtube_url)
+            video_id = metadata["video_id"] or YouTubeService.extract_video_id(youtube_url)
             transcript_info = YouTubeService.get_transcript_with_language_info(video_id)
             transcript = transcript_info["transcript"]
             transcript_language = transcript_info["language"]
@@ -245,34 +253,34 @@ class YouTubeService:
             print("✅ Transcript extracted successfully!")
         except Exception as e:
             print(f"❌ Transcript extraction failed: {e}")
+            traceback.print_exc()
             print("🔄 Falling back to Whisper transcription...")
-            
-            # Fallback to Whisper
+            # Fallback to Whisper using yt-dlp for audio download
             try:
-                print("Downloading audio for Whisper transcription...")
-                audio_stream = yt.streams.filter(only_audio=True).first()
-                if audio_stream is None:
-                    raise Exception('No audio stream found for this video.')
-                
-                with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_audio:
-                    audio_stream.download(filename=tmp_audio.name)
-                    audio_path = tmp_audio.name
-                
-                print("Transcribing with Whisper...")
-                model = whisper.load_model("base")
-                result = model.transcribe(audio_path)
-                transcript = result["text"]
-                transcript_language = result.get("language", "unknown")
-                transcript_language_code = result.get("language", "unknown")
-                
-                # Clean up
-                os.remove(audio_path)
-                print("✅ Whisper transcription completed!")
-                
+                print("Downloading audio for Whisper transcription using yt-dlp...")
+                import tempfile
+                import os
+                import whisper
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    audio_path = os.path.join(tmpdir, "audio.mp3")
+                    # Download audio using yt-dlp
+                    result = subprocess.run([
+                        "yt-dlp", "-f", "bestaudio", "--extract-audio", "--audio-format", "mp3", "-o", audio_path, youtube_url
+                    ], capture_output=True, text=True)
+                    if result.returncode != 0:
+                        print(f"yt-dlp failed: {result.stderr}")
+                        raise Exception(f"yt-dlp failed: {result.stderr}")
+                    print("Transcribing with Whisper...")
+                    model = whisper.load_model("base")
+                    result = model.transcribe(audio_path)
+                    transcript = result["text"]
+                    transcript_language = result.get("language", "unknown")
+                    transcript_language_code = result.get("language", "unknown")
+                    print("✅ Whisper transcription completed!")
             except Exception as whisper_error:
                 print(f"❌ Whisper fallback also failed: {whisper_error}")
+                traceback.print_exc()
                 raise Exception(f"Failed to extract video data. Transcript error: {e}, Whisper error: {whisper_error}")
-        
         # Return the result
         return {
             "transcript": transcript,

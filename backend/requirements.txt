@@ -10,7 +10,5 @@ pydantic==2.10.4
 python-multipart==0.0.6
 aiofiles==23.2.1
 
-# For speech-to-text fallback
-whisper
-openai-whisper
-ffmpeg-python
+# Note: Removed whisper packages as they're not needed for basic functionality
+# and can cause deployment issues on Render

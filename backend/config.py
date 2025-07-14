@@ -29,8 +29,13 @@ class Config:
     PDF_PAGE_SIZE = "A4"
     PDF_MARGIN = 1  # inch
     
-    # CORS Settings
-    ALLOWED_ORIGINS = ["*"]  # In production, specify your frontend URL
+    # CORS Settings - Updated for production
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "https://your-netlify-app.netlify.app",  # Replace with your actual Netlify URL
+        "https://*.netlify.app"  # Allow all Netlify subdomains
+    ]
     
     # File Settings
     TEMP_DIR = "temp"
