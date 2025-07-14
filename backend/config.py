@@ -33,7 +33,7 @@ class Config:
     ALLOWED_ORIGINS = [
         "http://localhost:3000",
         "http://localhost:5173", 
-        "https://your-netlify-app.netlify.app",  # Replace with your actual Netlify URL
+        "https://brevixai.netlify.app",  # Your actual Netlify URL
         "https://*.netlify.app"  # Allow all Netlify subdomains
     ]
     
