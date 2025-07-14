@@ -4,7 +4,8 @@
     "openai": "^5.9.0",
     "pdfkit": "^0.17.1",
     "react-markdown": "^8.0.7",
-    "youtube-transcript": "^1.2.1"
+    "youtube-transcript": "^1.2.1",
+    "ytdl-core": "^4.11.5"
   },
   "name": "ytnotesgeneratorfrontend",
   "version": "1.0.0",
