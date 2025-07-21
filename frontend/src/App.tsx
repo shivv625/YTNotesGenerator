@@ -38,6 +38,7 @@ function App() {
   const [generatedNotes, setGeneratedNotes] = useState<GeneratedNotes | null>(
     null
   );
+  const [metadata, setMetadata] = useState<any>(null);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
@@ -85,7 +86,15 @@ function App() {
         if (data.success) {
           setGeneratedNotes({
             content: data.notes,
-            videoTitle: data.title || "Generated Notes",
+            videoTitle: data.video_title || "Generated Notes",
+            videoDuration: data.video_duration,
+            videoAuthor: data.video_author,
+            publishDate: data.publish_date,
+          });
+          setMetadata({
+            viewCount: data.view_count,
+            description: data.description,
+            videoId: data.video_id,
           });
 
           setShowResults(true);

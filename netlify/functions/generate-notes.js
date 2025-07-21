@@ -1,5 +1,6 @@
 const { getTranscript } = require("youtube-transcript");
 const axios = require("axios");
+const ytdl = require("ytdl-core");
 
 exports.handler = async function (event, context) {
   try {
@@ -33,7 +34,32 @@ exports.handler = async function (event, context) {
     }
     const transcript = transcriptArr.map((t) => t.text).join(" ");
 
-    // 2. Generate notes using OpenRouter (Mistral)
+    // 2. Extract video metadata
+    let metadata = {};
+    try {
+      const info = await ytdl.getInfo(url);
+      metadata = {
+        video_title: info.videoDetails.title,
+        video_author: info.videoDetails.author.name,
+        video_duration: info.videoDetails.lengthSeconds,
+        publish_date: info.videoDetails.publishDate,
+        view_count: info.videoDetails.viewCount,
+        description: info.videoDetails.description,
+        video_id: info.videoDetails.videoId,
+      };
+    } catch (err) {
+      metadata = {
+        video_title: "",
+        video_author: "",
+        video_duration: "",
+        publish_date: "",
+        view_count: "",
+        description: "",
+        video_id: "",
+      };
+    }
+
+    // 3. Generate notes using OpenRouter (Mistral)
     const apiKey = process.env.OPENROUTER_API_KEY;
     const prompt = `You are an expert note-taker and educator. Generate ${
       style || "comprehensive"
@@ -69,7 +95,7 @@ exports.handler = async function (event, context) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, notes }),
+      body: JSON.stringify({ success: true, notes, ...metadata }),
     };
   } catch (error) {
     return {
