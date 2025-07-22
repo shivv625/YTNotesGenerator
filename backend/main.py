@@ -11,7 +11,6 @@ import os
 from datetime import datetime
 from typing import Optional
 
-# Import our services and models
 from models import (
     VideoRequest, PDFRequest, NotesResponse, HealthResponse, 
     APIInfoResponse, ErrorResponse, NoteStyle
@@ -21,7 +20,6 @@ from ai_service import AIService
 from pdf_service import PDFService
 from config import Config
 
-# Create FastAPI app
 app = FastAPI(
     title="YouTube Notes Generator API",
     description="Generate comprehensive study notes from YouTube videos using AI",
@@ -30,10 +28,9 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=["*"],  #
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

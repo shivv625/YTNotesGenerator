@@ -32,6 +32,8 @@ interface GeneratedNotes {
   publishDate?: string;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || "/api";
+
 function App() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -95,7 +97,7 @@ function App() {
     setError(null);
 
     try {
-      const response = await fetch("/api/generate-notes/", {
+      const response = await fetch(`${API_URL}/generate-notes/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -170,7 +172,7 @@ function App() {
 
     try {
       console.log("📄 Generating PDF...");
-      const response = await fetch("/api/download-pdf", {
+      const response = await fetch(`${API_URL}/download-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
